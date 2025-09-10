@@ -41,9 +41,6 @@ export class InviteCodesController {
     status: HttpStatus.CREATED,
     type: InviteCodeDto,
   })
-  @SerializeOptions({
-    groups: ['admin'],
-  })
   async create(
     @Body() createInviteCodeDto: CreateInviteCodeDto,
     @Request() request,
@@ -63,11 +60,8 @@ export class InviteCodesController {
   async findAll(
     @Query() query: QueryInviteCodeDto,
   ): Promise<InfinityPaginationResponseDto<InviteCodeDto>> {
-    const page = query?.page ?? 1;
-    let limit = query?.limit ?? 10;
-    if (limit > 50) {
-      limit = 50;
-    }
+    const page = query?.pagination.offset;
+    const limit = query?.pagination.limit;
 
     const data = await this.inviteCodesService.findAll({
       page,
@@ -122,9 +116,6 @@ export class InviteCodesController {
     status: HttpStatus.OK,
     type: InviteCodeDto,
   })
-  @SerializeOptions({
-    groups: ['admin'],
-  })
   async update(
     @Param('id') id: string,
     @Body() updateInviteCodeDto: UpdateInviteCodeDto,
@@ -149,9 +140,6 @@ export class InviteCodesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @SerializeOptions({
-    groups: ['admin'],
-  })
   async remove(@Param('id') id: string): Promise<void> {
     return this.inviteCodesService.remove(+id);
   }

@@ -1,21 +1,9 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
-import { IsNumber, IsOptional, Min } from 'class-validator';
+import { IsOptional } from 'class-validator';
+import { PaginationInput } from '../../common-dto/pagination.dto';
+import { Type } from 'class-transformer';
 
 export class QueryInviteCodeDto {
-  @ApiPropertyOptional()
-  @Transform(({ value }) => (value ? Number(value) : 1))
-  @IsNumber()
   @IsOptional()
-  @Type(() => Number)
-  @Min(1)
-  page?: number;
-
-  @ApiPropertyOptional()
-  @Transform(({ value }) => (value ? Number(value) : 10))
-  @IsNumber()
-  @IsOptional()
-  @Type(() => Number)
-  @Min(1)
-  limit?: number;
+  @Type(() => PaginationInput)
+  pagination: PaginationInput;
 }
