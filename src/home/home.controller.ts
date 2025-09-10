@@ -12,4 +12,9 @@ export class HomeController {
   appInfo() {
     return this.service.appInfo();
   }
+
+  @Get('hello-world')
+  helloWorld() {
+    return this.service.helloWorld();
+  }
 }

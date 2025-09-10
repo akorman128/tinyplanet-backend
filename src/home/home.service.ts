@@ -9,4 +9,8 @@ export class HomeService {
   appInfo() {
     return { name: this.configService.get('app.name', { infer: true }) };
   }
+
+  helloWorld() {
+    return 'hello world';
+  }
 }
