@@ -125,6 +125,11 @@ export class UsersService {
       status: status,
       provider: createUserDto.provider ?? AuthProvidersEnum.email,
       socialId: createUserDto.socialId,
+      birthday: createUserDto.birthday,
+      hometown: createUserDto.hometown,
+      currentLocation: createUserDto.currentLocation,
+      inviteCode: createUserDto.inviteCode,
+      invitesRemaining: createUserDto.invitesRemaining ?? 3,
     });
   }
 

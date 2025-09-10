@@ -23,6 +23,11 @@ export class UserMapper {
     domainEntity.createdAt = raw.createdAt;
     domainEntity.updatedAt = raw.updatedAt;
     domainEntity.deletedAt = raw.deletedAt;
+    domainEntity.birthday = raw.birthday;
+    domainEntity.hometown = raw.hometown;
+    domainEntity.currentLocation = raw.currentLocation;
+    domainEntity.inviteCode = raw.inviteCode;
+    domainEntity.invitesRemaining = raw.invitesRemaining;
     return domainEntity;
   }
 
@@ -67,6 +72,11 @@ export class UserMapper {
     persistenceEntity.createdAt = domainEntity.createdAt;
     persistenceEntity.updatedAt = domainEntity.updatedAt;
     persistenceEntity.deletedAt = domainEntity.deletedAt;
+    persistenceEntity.birthday = domainEntity.birthday;
+    persistenceEntity.hometown = domainEntity.hometown;
+    persistenceEntity.currentLocation = domainEntity.currentLocation;
+    persistenceEntity.inviteCode = domainEntity.inviteCode;
+    persistenceEntity.invitesRemaining = domainEntity.invitesRemaining;
     return persistenceEntity;
   }
 }

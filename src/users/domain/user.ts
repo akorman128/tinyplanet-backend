@@ -71,4 +71,40 @@ export class User {
 
   @ApiProperty()
   deletedAt: Date;
+
+  @ApiProperty({
+    type: Date,
+    example: '1990-01-01',
+    description: 'User birthday',
+  })
+  birthday?: Date | null;
+
+  @ApiProperty({
+    type: String,
+    example: 'New York, NY',
+    description: 'User hometown',
+  })
+  hometown?: string | null;
+
+  @ApiProperty({
+    type: 'object',
+    example: { type: 'Point', coordinates: [-74.006, 40.7128] },
+    description: 'Current location coordinates (longitude, latitude)',
+    additionalProperties: true,
+  })
+  currentLocation?: { type: 'Point'; coordinates: [number, number] } | null;
+
+  @ApiProperty({
+    type: String,
+    example: 'ABC123DEF',
+    description: 'Invite code used to join',
+  })
+  inviteCode?: string | null;
+
+  @ApiProperty({
+    type: Number,
+    example: 3,
+    description: 'Number of invite codes remaining',
+  })
+  invitesRemaining: number;
 }

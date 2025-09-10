@@ -45,4 +45,45 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
   @Type(() => StatusDto)
   status?: StatusDto;
+
+  @ApiPropertyOptional({
+    example: '1990-01-01',
+    description: 'User birthday',
+    type: String,
+  })
+  @IsOptional()
+  @Transform(({ value }) => (value ? new Date(value) : null))
+  birthday?: Date | null;
+
+  @ApiPropertyOptional({
+    example: 'New York, NY',
+    description: 'User hometown',
+  })
+  @IsOptional()
+  hometown?: string | null;
+
+  @ApiPropertyOptional({
+    example: { type: 'Point', coordinates: [-74.006, 40.7128] },
+    description: 'Current location coordinates (longitude, latitude)',
+    type: 'object',
+    additionalProperties: true,
+  })
+  @IsOptional()
+  currentLocation?: { type: 'Point'; coordinates: [number, number] } | null;
+
+  @ApiPropertyOptional({
+    example: 'ABC123DEF',
+    description: 'Invite code used to join',
+  })
+  @IsOptional()
+  inviteCode?: string | null;
+
+  @ApiPropertyOptional({
+    example: 3,
+    description: 'Number of invite codes remaining',
+    type: Number,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  invitesRemaining?: number;
 }

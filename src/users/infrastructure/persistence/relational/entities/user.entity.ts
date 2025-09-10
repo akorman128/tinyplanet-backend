@@ -71,4 +71,19 @@ export class UserEntity extends EntityRelationalHelper {
 
   @DeleteDateColumn()
   deletedAt: Date;
+
+  @Column({ type: 'date', nullable: true })
+  birthday?: Date | null;
+
+  @Column({ type: String, nullable: true })
+  hometown?: string | null;
+
+  @Column({ type: 'point', nullable: true })
+  currentLocation?: { type: 'Point'; coordinates: [number, number] } | null;
+
+  @Column({ type: String, nullable: true })
+  inviteCode?: string | null;
+
+  @Column({ type: 'int', default: 3 })
+  invitesRemaining: number;
 }
