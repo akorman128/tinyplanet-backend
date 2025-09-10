@@ -86,4 +86,11 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
   @Type(() => Number)
   invitesRemaining?: number;
+
+  @ApiPropertyOptional({
+    example: '+1234567890',
+    description: 'User phone number in E.164 format',
+  })
+  @IsOptional()
+  phoneNumber?: string | null;
 }

@@ -86,4 +86,7 @@ export class UserEntity extends EntityRelationalHelper {
 
   @Column({ type: 'int', default: 3 })
   invitesRemaining: number;
+
+  @Column({ type: String, nullable: true })
+  phoneNumber?: string | null;
 }

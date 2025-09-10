@@ -5,9 +5,10 @@ import { InviteCodesController } from './invite-codes.controller';
 import { InviteCodeEntity } from './infrastructure/persistence/relational/entities/invite-code.entity';
 import { InviteCodeRepository } from './infrastructure/persistence/invite-code.repository';
 import { InviteCodeRelationalRepository } from './infrastructure/persistence/relational/repositories/invite-code.repository';
+import { SmsModule } from '../sms/sms.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([InviteCodeEntity])],
+  imports: [TypeOrmModule.forFeature([InviteCodeEntity]), SmsModule],
   controllers: [InviteCodesController],
   providers: [
     InviteCodesService,

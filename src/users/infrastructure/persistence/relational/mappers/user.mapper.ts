@@ -28,6 +28,7 @@ export class UserMapper {
     domainEntity.currentLocation = raw.currentLocation;
     domainEntity.inviteCode = raw.inviteCode;
     domainEntity.invitesRemaining = raw.invitesRemaining;
+    domainEntity.phoneNumber = raw.phoneNumber;
     return domainEntity;
   }
 
@@ -77,6 +78,7 @@ export class UserMapper {
     persistenceEntity.currentLocation = domainEntity.currentLocation;
     persistenceEntity.inviteCode = domainEntity.inviteCode;
     persistenceEntity.invitesRemaining = domainEntity.invitesRemaining;
+    persistenceEntity.phoneNumber = domainEntity.phoneNumber;
     return persistenceEntity;
   }
 }

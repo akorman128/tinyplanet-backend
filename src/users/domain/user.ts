@@ -107,4 +107,12 @@ export class User {
     description: 'Number of invite codes remaining',
   })
   invitesRemaining: number;
+
+  @ApiProperty({
+    type: String,
+    example: '+1234567890',
+    description: 'User phone number in E.164 format',
+  })
+  @Expose({ groups: ['me', 'admin'] })
+  phoneNumber?: string | null;
 }

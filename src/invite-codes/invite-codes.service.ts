@@ -9,10 +9,14 @@ import { CreateInviteCodeDto } from './dto/create-invite-code.dto';
 import { UpdateInviteCodeDto } from './dto/update-invite-code.dto';
 import { IPaginationOptions } from '../utils/types/pagination-options';
 import { User } from '../users/domain/user';
+import { SmsService } from '../sms/sms.service';
 
 @Injectable()
 export class InviteCodesService {
-  constructor(private readonly inviteCodeRepository: InviteCodeRepository) {}
+  constructor(
+    private readonly inviteCodeRepository: InviteCodeRepository,
+    private readonly smsService: SmsService,
+  ) {}
 
   async create(
     createInviteCodeDto: CreateInviteCodeDto,
@@ -125,6 +129,27 @@ export class InviteCodesService {
     await this.inviteCodeRepository.remove(id);
   }
 
+  async sendSms(inviteCode: InviteCode, phoneNumber: string): Promise<void> {
+    if (!this.smsService.isConfigured()) {
+      throw new BadRequestException('SMS service is not configured');
+    }
+
+    const expirationHours = Math.ceil(
+      (inviteCode.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60),
+    );
+
+    const message = `You lucky frikn duck. Your Tiny Planet invite code is: ${inviteCode.code}. Valid for ${Math.max(1, expirationHours)} hours. Use it or lose it.`;
+
+    const result = await this.smsService.sendSmsWithRetry({
+      to: phoneNumber,
+      body: message,
+    });
+
+    if (!result.success) {
+      throw new BadRequestException(`Failed to send SMS: ${result.error}`);
+    }
+  }
+
   private generateRandomCode(): string {
     // Use crypto-safe random generation for better security
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -137,5 +162,11 @@ export class InviteCodesService {
     }
 
     return result;
+  }
+
+  private isValidPhoneNumber(phoneNumber: string): boolean {
+    // Basic E.164 format validation: + followed by 7-15 digits
+    const e164Regex = /^\+[1-9]\d{1,14}$/;
+    return e164Regex.test(phoneNumber);
   }
 }

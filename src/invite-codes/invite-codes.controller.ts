@@ -21,6 +21,7 @@ import { UpdateInviteCodeDto } from './dto/update-invite-code.dto';
 import { UseInviteCodeDto } from './dto/use-invite-code.dto';
 import { InviteCodeDto } from './dto/invite-code.dto';
 import { QueryInviteCodeDto } from './dto/query-invite-code.dto';
+import { SendSmsDto } from './dto/send-sms.dto';
 import { InfinityPaginationResponseDto } from '../utils/dto/infinity-pagination-response.dto';
 import { infinityPagination } from '../utils/infinity-pagination';
 
@@ -129,6 +130,21 @@ export class InviteCodesController {
     @Body() updateInviteCodeDto: UpdateInviteCodeDto,
   ): Promise<InviteCodeDto> {
     return this.inviteCodesService.update(+id, updateInviteCodeDto);
+  }
+
+  @Post(':id/send-sms')
+  @HttpCode(HttpStatus.OK)
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'SMS sent successfully',
+  })
+  async sendSms(
+    @Param('id') id: string,
+    @Body() sendSmsDto: SendSmsDto,
+  ): Promise<{ message: string }> {
+    const inviteCode = await this.inviteCodesService.findOne(+id);
+    await this.inviteCodesService.sendSms(inviteCode, sendSmsDto.phoneNumber);
+    return { message: 'SMS sent successfully' };
   }
 
   @Delete(':id')
