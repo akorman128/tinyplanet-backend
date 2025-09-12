@@ -33,8 +33,11 @@ const infrastructureDatabaseModule = TypeOrmModule.forRootAsync({
   },
 });
 
+import { RelationsModule } from './relations/relations.module';
+
 @Module({
   imports: [
+    RelationsModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [
