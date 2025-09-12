@@ -1,18 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from '../../users/domain/user';
 
 export class InviteCodeDto {
   @ApiProperty()
-  id: number | string;
+  id: number;
 
   @ApiProperty({ example: 'ABC123DEF' })
   code: string;
 
-  @ApiProperty({ type: () => User })
-  createdBy: User;
+  @ApiProperty()
+  createdById: number;
 
-  @ApiProperty({ type: () => User })
-  usedBy?: User | null;
+  @ApiProperty()
+  usedById?: number | null;
 
   @ApiProperty()
   usedAt?: Date | null;

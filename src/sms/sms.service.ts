@@ -26,10 +26,7 @@ export class SmsService {
     const fromPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
     if (!accountSid || !authToken) {
-      this.logger.warn(
-        'Twilio credentials not configured. SMS service will be disabled.',
-      );
-      return;
+      throw new BadRequestException('Twilio credentials not configured.');
     }
 
     if (!fromPhoneNumber) {
@@ -45,14 +42,10 @@ export class SmsService {
   }
 
   async sendSms(options: SendSmsOptions): Promise<SendSmsResult> {
-    if (!this.client || !this.fromPhoneNumber) {
-      throw new BadRequestException('SMS service is not configured');
-    }
-
     const { to, body, from = this.fromPhoneNumber } = options;
 
     try {
-      const message = await this.client.messages.create({
+      const message = await this.client!.messages.create({
         to,
         from,
         body,

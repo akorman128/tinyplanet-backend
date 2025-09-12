@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString, MinLength, MaxLength } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class UseInviteCodeDto {
   @ApiProperty({
@@ -9,8 +9,6 @@ export class UseInviteCodeDto {
   })
   @IsNotEmpty()
   @IsString()
-  @MinLength(6)
-  @MaxLength(20)
   @Transform(({ value }) => value?.toUpperCase())
   code: string;
 }

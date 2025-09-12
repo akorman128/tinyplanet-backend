@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from '../../users/domain/user';
 
 const idType = Number;
 
@@ -17,16 +16,17 @@ export class InviteCode {
   code: string;
 
   @ApiProperty({
-    type: () => User,
-    description: 'User who created this invite code',
+    type: idType,
+    description: 'ID of user who created this invite code',
   })
-  createdBy: User;
+  createdById: number | string;
 
   @ApiProperty({
-    type: () => User,
-    description: 'User who used this invite code',
+    type: idType,
+    description: 'ID of user who used this invite code',
+    required: false,
   })
-  usedBy?: User | null;
+  usedById?: number | string | null;
 
   @ApiProperty({
     type: Date,

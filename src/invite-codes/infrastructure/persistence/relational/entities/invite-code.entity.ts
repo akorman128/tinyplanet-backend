@@ -3,12 +3,9 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  JoinColumn,
 } from 'typeorm';
-import { UserEntity } from '../../../../../users/infrastructure/persistence/relational/entities/user.entity';
 import { EntityRelationalHelper } from '../../../../../utils/relational-entity-helper';
 
 @Entity({
@@ -22,18 +19,13 @@ export class InviteCodeEntity extends EntityRelationalHelper {
   @Column({ type: String, unique: true })
   code: string;
 
-  @ManyToOne(() => UserEntity, {
-    eager: true,
-  })
-  @JoinColumn({ name: 'created_by_id' })
-  createdBy: UserEntity;
+  @Index()
+  @Column({ type: Number, name: 'created_by_id' })
+  createdById: number;
 
-  @ManyToOne(() => UserEntity, {
-    eager: true,
-    nullable: true,
-  })
-  @JoinColumn({ name: 'used_by_id' })
-  usedBy?: UserEntity | null;
+  @Index()
+  @Column({ type: Number, name: 'used_by_id', nullable: true })
+  usedById?: number | null;
 
   @Column({ type: 'timestamp', nullable: true })
   usedAt?: Date | null;

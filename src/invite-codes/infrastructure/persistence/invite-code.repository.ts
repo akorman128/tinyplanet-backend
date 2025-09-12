@@ -1,7 +1,7 @@
-import { DeepPartial } from '../../../utils/types/deep-partial.type';
 import { NullableType } from '../../../utils/types/nullable.type';
 import { IPaginationOptions } from '../../../utils/types/pagination-options';
 import { InviteCode } from '../../domain/invite-code';
+import { UpdateInviteCodeDto } from '../../dto/update-invite-code.dto';
 
 export abstract class InviteCodeRepository {
   abstract create(
@@ -18,14 +18,15 @@ export abstract class InviteCodeRepository {
 
   abstract findByCode(code: string): Promise<NullableType<InviteCode>>;
 
-  abstract findByCreatedBy(userId: number): Promise<InviteCode[]>;
-
-  abstract findActiveByCode(code: string): Promise<NullableType<InviteCode>>;
+  abstract findByCreatedBy(
+    userId: number,
+    dateRange?: { start: Date; end: Date },
+  ): Promise<InviteCode[]>;
 
   abstract update(
-    id: InviteCode['id'],
-    payload: DeepPartial<InviteCode>,
-  ): Promise<InviteCode | null>;
+    id: number,
+    inviteCode: UpdateInviteCodeDto,
+  ): Promise<InviteCode>;
 
-  abstract remove(id: InviteCode['id']): Promise<void>;
+  abstract remove(id: number): Promise<void>;
 }

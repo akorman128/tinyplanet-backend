@@ -19,6 +19,7 @@ jest.mock('twilio', () => {
 describe('SmsService', () => {
   let service: SmsService;
   let configService: ConfigService;
+
   const originalEnv = process.env;
 
   beforeEach(() => {

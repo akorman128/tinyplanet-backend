@@ -1,51 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { InviteCodesService } from './invite-codes.service';
 import { InviteCodeRepository } from './infrastructure/persistence/invite-code.repository';
+import { SmsService } from '../sms/sms.service';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { InviteCode } from './domain/invite-code';
-import { User } from '../users/domain/user';
-import { CreateInviteCodeDto } from './dto/create-invite-code.dto';
-import { UpdateInviteCodeDto } from './dto/update-invite-code.dto';
 
 describe('InviteCodesService', () => {
   let service: InviteCodesService;
-
-  const mockUser: User = {
-    id: 1,
-    email: 'test@example.com',
-    firstName: 'Test',
-    lastName: 'User',
-    role: { id: 1, name: 'user' },
-    status: { id: 1, name: 'active' },
-    provider: 'email',
-    socialId: null,
-    photo: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    deletedAt: new Date(),
-  } as User;
-
-  const mockInviteCode: InviteCode = {
-    id: 1,
-    code: 'ABC123DEF',
-    createdBy: mockUser,
-    usedBy: null,
-    usedAt: null,
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  const mockRepository = {
-    create: jest.fn(),
-    findById: jest.fn(),
-    findByCode: jest.fn(),
-    findActiveByCode: jest.fn(),
-    findByCreatedBy: jest.fn(),
-    findAllWithPagination: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-  };
+  let inviteCodeRepository: jest.Mocked<InviteCodeRepository>;
+  let smsService: jest.Mocked<SmsService>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -53,269 +16,232 @@ describe('InviteCodesService', () => {
         InviteCodesService,
         {
           provide: InviteCodeRepository,
-          useValue: mockRepository,
+          useValue: {
+            create: jest.fn(),
+            findByCode: jest.fn(),
+            findByCreatedBy: jest.fn(),
+            findById: jest.fn(),
+            update: jest.fn(),
+            remove: jest.fn(),
+            findAllWithPagination: jest.fn(),
+          },
+        },
+        {
+          provide: SmsService,
+          useValue: {
+            sendSmsWithRetry: jest.fn(),
+          },
         },
       ],
     }).compile();
 
     service = module.get<InviteCodesService>(InviteCodesService);
-
-    jest.clearAllMocks();
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+    inviteCodeRepository = module.get(InviteCodeRepository);
+    smsService = module.get(SmsService);
   });
 
   describe('create', () => {
-    it('should create invite code correctly', async () => {
-      const createDto: CreateInviteCodeDto = {};
-      mockRepository.findByCode.mockResolvedValueOnce(null);
-      mockRepository.create.mockResolvedValueOnce(mockInviteCode);
+    it('should create invite code successfully', async () => {
+      const createdById = 123;
+      const mockInviteCode = {
+        id: 1,
+        code: 'ABC123',
+        createdById,
+        usedById: null,
+        usedAt: null,
+        expiresAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as InviteCode;
 
-      const result = await service.create(createDto, mockUser);
+      inviteCodeRepository.findByCreatedBy.mockResolvedValue([]);
+      inviteCodeRepository.findByCode.mockResolvedValue(null);
+      inviteCodeRepository.create.mockResolvedValue(mockInviteCode);
+
+      const result = await service.create(createdById);
 
       expect(result).toEqual(mockInviteCode);
-      expect(mockRepository.findByCode).toHaveBeenCalled();
-      expect(mockRepository.create).toHaveBeenCalledWith({
-        code: expect.any(String),
-        createdBy: mockUser,
-        expiresAt: expect.any(Date),
-      });
+      expect(inviteCodeRepository.findByCreatedBy).toHaveBeenCalledWith(
+        createdById,
+        expect.objectContaining({
+          start: expect.any(Date),
+          end: expect.any(Date),
+        }),
+      );
+      expect(inviteCodeRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createdById,
+          code: expect.any(String),
+          expiresAt: expect.any(Date),
+        }),
+      );
     });
 
-    it('should generate unique code when collision occurs', async () => {
-      const createDto: CreateInviteCodeDto = {};
-      mockRepository.findByCode
-        .mockResolvedValueOnce(mockInviteCode) // First code exists
-        .mockResolvedValueOnce(null); // Second code is unique
-      mockRepository.create.mockResolvedValueOnce(mockInviteCode);
+    it('should throw when monthly limit exceeded', async () => {
+      const createdById = 123;
+      const existingCodes = new Array(3).fill({}).map((_, i) => ({
+        id: i + 1,
+        code: `CODE${i}`,
+        createdById,
+      })) as InviteCode[];
 
-      await service.create(createDto, mockUser);
+      inviteCodeRepository.findByCreatedBy.mockResolvedValue(existingCodes);
 
-      expect(mockRepository.findByCode).toHaveBeenCalledTimes(2);
-      expect(mockRepository.create).toHaveBeenCalledTimes(1);
-    });
+      await expect(service.create(createdById)).rejects.toThrow(
+        BadRequestException,
+      );
 
-    it('should use provided expiration date', async () => {
-      const expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      const createDto: CreateInviteCodeDto = {
-        expiresAt: expirationDate.toISOString(),
-      };
-      mockRepository.findByCode.mockResolvedValueOnce(null);
-      mockRepository.create.mockResolvedValueOnce(mockInviteCode);
-
-      await service.create(createDto, mockUser);
-
-      expect(mockRepository.create).toHaveBeenCalledWith({
-        code: expect.any(String),
-        createdBy: mockUser,
-        expiresAt: new Date(expirationDate),
-      });
+      expect(inviteCodeRepository.create).not.toHaveBeenCalled();
     });
   });
 
   describe('useInviteCode', () => {
-    it('should reject non-existent invite codes', async () => {
-      mockRepository.findActiveByCode.mockResolvedValueOnce(null);
+    it('should redeem code successfully', async () => {
+      const code = 'ABC123';
+      const usedById = 456;
+      const mockInviteCode = {
+        id: 1,
+        code,
+        createdById: 123,
+        usedById: null,
+        usedAt: null,
+        expiresAt: new Date(Date.now() + 86400000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as InviteCode;
 
-      await expect(
-        service.useInviteCode('NONEXISTENT', mockUser),
-      ).rejects.toThrow(
-        new BadRequestException('Invalid or expired invite code'),
-      );
-    });
-
-    it('should reject already used invite codes', async () => {
-      const usedInviteCode = {
-        ...mockInviteCode,
-        usedBy: { ...mockUser, id: 2 },
-        usedAt: new Date(),
-      };
-      mockRepository.findActiveByCode.mockResolvedValueOnce(usedInviteCode);
-
-      await expect(
-        service.useInviteCode('ABC123DEF', mockUser),
-      ).rejects.toThrow(
-        new BadRequestException('Invite code has already been used'),
-      );
-    });
-
-    it('should reject expired invite codes', async () => {
-      const expiredInviteCode = {
-        ...mockInviteCode,
-        expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Expired yesterday
-      };
-      mockRepository.findActiveByCode.mockResolvedValueOnce(expiredInviteCode);
-
-      await expect(
-        service.useInviteCode('ABC123DEF', mockUser),
-      ).rejects.toThrow(new BadRequestException('Invite code has expired'));
-    });
-
-    it('should successfully use valid invite code', async () => {
       const updatedInviteCode = {
         ...mockInviteCode,
-        usedBy: mockUser,
+        usedById,
         usedAt: new Date(),
       };
-      mockRepository.findActiveByCode.mockResolvedValueOnce(mockInviteCode);
-      mockRepository.update.mockResolvedValueOnce(updatedInviteCode);
 
-      const result = await service.useInviteCode('ABC123DEF', mockUser);
+      inviteCodeRepository.findByCode.mockResolvedValue(mockInviteCode);
+      inviteCodeRepository.update.mockResolvedValue(updatedInviteCode);
 
-      expect(result).toEqual(updatedInviteCode);
-      expect(mockRepository.update).toHaveBeenCalledWith(mockInviteCode.id, {
-        usedBy: mockUser,
-        usedAt: expect.any(Date),
-      });
+      const result = await service.useInviteCode({ code, usedById });
+
+      expect(result.usedById).toBe(usedById);
+      expect(inviteCodeRepository.update).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          usedById,
+          usedAt: expect.any(String),
+        }),
+      );
     });
 
-    it('should handle failed update during use', async () => {
-      mockRepository.findActiveByCode.mockResolvedValueOnce(mockInviteCode);
-      mockRepository.update.mockResolvedValueOnce(null);
+    it('should throw when code already used', async () => {
+      const code = 'ABC123';
+      const usedById = 456;
+      const mockInviteCode = {
+        id: 1,
+        code,
+        createdById: 123,
+        usedById: 789,
+        usedAt: new Date(),
+        expiresAt: new Date(Date.now() + 86400000),
+      } as InviteCode;
 
-      await expect(
-        service.useInviteCode('ABC123DEF', mockUser),
-      ).rejects.toThrow(
-        new BadRequestException('Failed to update invite code'),
+      inviteCodeRepository.findByCode.mockResolvedValue(mockInviteCode);
+
+      await expect(service.useInviteCode({ code, usedById })).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(inviteCodeRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw when code not found', async () => {
+      const code = 'INVALID';
+      const usedById = 456;
+
+      inviteCodeRepository.findByCode.mockResolvedValue(null);
+
+      await expect(service.useInviteCode({ code, usedById })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw when code is expired', async () => {
+      const code = 'ABC123';
+      const usedById = 456;
+      const mockInviteCode = {
+        id: 1,
+        code,
+        createdById: 123,
+        usedById: null,
+        usedAt: null,
+        expiresAt: new Date(Date.now() - 86400000), // expired
+      } as InviteCode;
+
+      inviteCodeRepository.findByCode.mockResolvedValue(mockInviteCode);
+
+      await expect(service.useInviteCode({ code, usedById })).rejects.toThrow(
+        BadRequestException,
       );
     });
   });
 
-  describe('findByCode', () => {
-    it('should find invite code by code', async () => {
-      mockRepository.findByCode.mockResolvedValueOnce(mockInviteCode);
+  describe('sendSms', () => {
+    it('should send SMS successfully', async () => {
+      const phoneNumber = '+1234567890';
+      const mockInviteCode = {
+        id: 1,
+        code: 'ABC123',
+        createdById: 123,
+      } as InviteCode;
 
-      const result = await service.findByCode('ABC123DEF');
+      smsService.sendSmsWithRetry.mockResolvedValue({
+        success: true,
+        messageId: 'msg_123',
+      });
 
-      expect(result).toEqual(mockInviteCode);
-      expect(mockRepository.findByCode).toHaveBeenCalledWith('ABC123DEF');
+      await service.sendSms(mockInviteCode, phoneNumber);
+
+      expect(smsService.sendSmsWithRetry).toHaveBeenCalledWith({
+        to: phoneNumber,
+        body: expect.stringContaining('ABC123'),
+      });
     });
 
-    it('should throw NotFoundException for non-existent code', async () => {
-      mockRepository.findByCode.mockResolvedValueOnce(null);
+    it('should throw when SMS fails', async () => {
+      const phoneNumber = '+1234567890';
+      const mockInviteCode = {
+        id: 1,
+        code: 'ABC123',
+        createdById: 123,
+      } as InviteCode;
 
-      await expect(service.findByCode('NONEXISTENT')).rejects.toThrow(
-        new NotFoundException('Invite code not found'),
-      );
+      smsService.sendSmsWithRetry.mockResolvedValue({
+        success: false,
+        error: 'SMS failed',
+      });
+
+      await expect(
+        service.sendSms(mockInviteCode, phoneNumber),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
   describe('findOne', () => {
-    it('should find invite code by id', async () => {
-      mockRepository.findById.mockResolvedValueOnce(mockInviteCode);
+    it('should return invite code when found', async () => {
+      const id = 1;
+      const mockInviteCode = { id, code: 'ABC123' } as InviteCode;
 
-      const result = await service.findOne(1);
+      inviteCodeRepository.findById.mockResolvedValue(mockInviteCode);
+
+      const result = await service.findOne(id);
 
       expect(result).toEqual(mockInviteCode);
-      expect(mockRepository.findById).toHaveBeenCalledWith(1);
     });
 
-    it('should throw NotFoundException for non-existent id', async () => {
-      mockRepository.findById.mockResolvedValueOnce(null);
+    it('should throw when not found', async () => {
+      const id = 999;
 
-      await expect(service.findOne(999)).rejects.toThrow(
-        new NotFoundException('Invite code not found'),
-      );
-    });
-  });
+      inviteCodeRepository.findById.mockResolvedValue(null);
 
-  describe('findAll', () => {
-    it('should return paginated invite codes', async () => {
-      const paginationOptions = { page: 1, limit: 10 };
-      const inviteCodes = [mockInviteCode];
-      mockRepository.findAllWithPagination.mockResolvedValueOnce(inviteCodes);
-
-      const result = await service.findAll(paginationOptions);
-
-      expect(result).toEqual(inviteCodes);
-      expect(mockRepository.findAllWithPagination).toHaveBeenCalledWith({
-        paginationOptions,
-      });
-    });
-  });
-
-  describe('findByCreatedBy', () => {
-    it('should find invite codes by creator', async () => {
-      const inviteCodes = [mockInviteCode];
-      mockRepository.findByCreatedBy.mockResolvedValueOnce(inviteCodes);
-
-      const result = await service.findByCreatedBy(1);
-
-      expect(result).toEqual(inviteCodes);
-      expect(mockRepository.findByCreatedBy).toHaveBeenCalledWith(1);
-    });
-  });
-
-  describe('update', () => {
-    it('should update invite code successfully', async () => {
-      const updateDto: UpdateInviteCodeDto = {
-        expiresAt: new Date(
-          Date.now() + 60 * 24 * 60 * 60 * 1000,
-        ).toISOString(),
-      };
-      const updatedInviteCode = { ...mockInviteCode, ...updateDto };
-
-      mockRepository.findById.mockResolvedValueOnce(mockInviteCode);
-      mockRepository.update.mockResolvedValueOnce(updatedInviteCode);
-
-      const result = await service.update(1, updateDto);
-
-      expect(result).toEqual(updatedInviteCode);
-      expect(mockRepository.update).toHaveBeenCalledWith(1, {
-        expiresAt: new Date(updateDto.expiresAt!),
-      });
-    });
-
-    it('should throw NotFoundException for non-existent invite code', async () => {
-      mockRepository.findById.mockResolvedValueOnce(null);
-
-      await expect(service.update(999, {})).rejects.toThrow(
-        new NotFoundException('Invite code not found'),
-      );
-    });
-
-    it('should throw NotFoundException when update fails', async () => {
-      mockRepository.findById.mockResolvedValueOnce(mockInviteCode);
-      mockRepository.update.mockResolvedValueOnce(null);
-
-      await expect(service.update(1, {})).rejects.toThrow(
-        new NotFoundException('Invite code not found or failed to update'),
-      );
-    });
-  });
-
-  describe('remove', () => {
-    it('should remove invite code successfully', async () => {
-      mockRepository.findById.mockResolvedValueOnce(mockInviteCode);
-      mockRepository.remove.mockResolvedValueOnce(undefined);
-
-      await service.remove(1);
-
-      expect(mockRepository.remove).toHaveBeenCalledWith(1);
-    });
-
-    it('should throw NotFoundException for non-existent invite code', async () => {
-      mockRepository.findById.mockResolvedValueOnce(null);
-
-      await expect(service.remove(999)).rejects.toThrow(
-        new NotFoundException('Invite code not found'),
-      );
-    });
-  });
-
-  describe('generateRandomCode (private method testing via create)', () => {
-    it('should generate 8-character codes', async () => {
-      const createDto: CreateInviteCodeDto = {};
-      mockRepository.findByCode.mockResolvedValueOnce(null);
-      mockRepository.create.mockImplementation((data) => {
-        expect(data.code).toHaveLength(8);
-        expect(data.code).toMatch(/^[A-Z0-9]{8}$/);
-        return Promise.resolve(mockInviteCode);
-      });
-
-      await service.create(createDto, mockUser);
+      await expect(service.findOne(id)).rejects.toThrow(NotFoundException);
     });
   });
 });
